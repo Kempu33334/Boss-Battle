@@ -8,9 +8,16 @@ pygame.init()
 screen = pygame.display.set_mode((1000, 1000))
 pygame.display.set_caption("Boss Battle")
 
+# Fade animation variables
+fade_surface = pygame.Surface((1000, 1000))
+fade_surface.fill((0, 0, 0))
+fade_alpha = 0
+fade_state = "none"  # none, fade_out, fade_in
+fade_speed = 5
+
 pIndexX = 5
 pIndexY = 5
-places = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+places = [0] * 100
 enemyIndexX = 1
 enemyIndexY = 1
 enemyIndexX2 = 1
@@ -46,9 +53,6 @@ for i in range(1, 2):
 
 running = True
 
-# MOVE TO START BUTTON CLICK
-start_time = time.time()
-
 while running:
     if gameState == "menu":
         screen.fill("black")
@@ -56,6 +60,11 @@ while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Check if start button is clicked
+                if pygame.Rect(500-start.get_width()/2 + 5*math.sin(pygame.time.get_ticks()/500), 400, start.get_width(), start.get_height()).collidepoint(pygame.mouse.get_pos()):
+                    fade_state = "fade_out"
+                    fade_alpha = 0
                 
         screen.blit(logo, (500-logo.get_width()/2, 100))
         screen.blit(start, (500-start.get_width()/2 + 5*math.sin(pygame.time.get_ticks()/500), 400))
@@ -74,23 +83,30 @@ while running:
         if pygame.Rect(500-helpbutton.get_width()/2 + 5*math.sin(pygame.time.get_ticks()/500 + 100), 700, helpbutton.get_width(), helpbutton.get_height()).collidepoint(pygame.mouse.get_pos()):
             screen.blit(selection, (500-selection.get_width()/2, 700 + helpbutton.get_height()/2 - selection.get_height()/2))
         
+        # Handle fade animation
+        if fade_state == "fade_out":
+            fade_alpha += fade_speed
+            if fade_alpha >= 255:
+                fade_alpha = 255
+                fade_state = "fade_in"
+                gameState = "game"
+                start_time = time.time()  # Only set start_time here
+        
+        # Draw fade overlay
+        fade_surface.set_alpha(fade_alpha)
+        screen.blit(fade_surface, (0, 0))
+        
         pygame.display.update()
         
     elif gameState == "game":
+        # Handle fade-in animation
+        if fade_state == "fade_in":
+            fade_alpha -= fade_speed
+            if fade_alpha <= 0:
+                fade_alpha = 0
+                fade_state = "none"
         
-        pygame.draw.rect(
-            screen, (151, 240, 178), pygame.Rect(300, 800, 400, 20), border_radius=10
-        )
-        
-        pygame.draw.rect(
-            screen,
-            (253, 66, 68),
-            pygame.Rect(300, 800, 4 * (100 - health), 20),
-            border_radius=10,
-            border_top_right_radius=0,
-            border_bottom_right_radius=0,
-        )
-        
+        # Handle input first
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -104,10 +120,13 @@ while running:
                 if event.key == pygame.K_RIGHT:
                     pIndexX += 1
 
+        # Clear screen
         screen.fill((0, 0, 0))
 
+        # Draw game elements
         pygame.draw.rect(screen, (255, 255, 255), (350, 350, 300, 300), 15)
 
+        # Update player position
         if pIndexX > 9:
             pIndexX = 9
         if pIndexY > 9:
@@ -117,8 +136,10 @@ while running:
         if pIndexY < 1:
             pIndexY = 1
 
-        places = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        # Initialize places array
+        places = [0] * 100
 
+        # Update game state
         places[10 * pIndexY + pIndexX] = 1
         cycle += 1
         places[10 * enemyIndexY + enemyIndexX] = 2
@@ -181,44 +202,52 @@ while running:
         # Round 2
         elif gameRound == 2:
             cycle = cycle % (900 - 3 * (int(score) - 50))
+            
+            # Display Round 2 text
             if time.time() - start_time < 4:
                 if (time.time() - start_time) % 0.75 > 0.375:
                     cycle = 51
-                    screen.blit(font.render("Round 2", True, (255, 255, 255)), (500 - (font.render("Round 2", True, (255, 255, 255))).get_width() / 2, 50))
+                    screen.blit(font.render("Round 2", True, (255, 255, 255)), 
+                               (500 - (font.render("Round 2", True, (255, 255, 255))).get_width() / 2, 50))
             else:
-                screen.blit(font.render("Round 2", True, (255, 255, 255)), (500 - (font.render("Round 2", True, (255, 255, 255))).get_width() / 2, 50))
-                if 0 == math.floor(cycle / 45):
-                    for x in range(1, 10):
-                        places[(enemyIndexY) * 10 + x] = 2
-                        places[enemyIndexX + x * 10] = 2
-                if cycle == 46:
+                screen.blit(font.render("Round 2", True, (255, 255, 255)), 
+                           (500 - (font.render("Round 2", True, (255, 255, 255))).get_width() / 2, 50))
+            
+            # First enemy behavior
+            if cycle < 45:  # First enemy shoots
+                for x in range(1, 10):
+                    places[(enemyIndexY) * 10 + x] = 2
+                    places[enemyIndexX + x * 10] = 2
+            elif cycle == 46:  # First enemy moves
+                enemyIndexX = random.randint(1, 9)
+                enemyIndexY = random.randint(1, 9)
+                if enemyIndexX == pIndexX and enemyIndexY == pIndexY:
                     enemyIndexX = random.randint(1, 9)
                     enemyIndexY = random.randint(1, 9)
                     if enemyIndexX == pIndexX and enemyIndexY == pIndexY:
                         enemyIndexX = random.randint(1, 9)
                         enemyIndexY = random.randint(1, 9)
-                        if enemyIndexX == pIndexX and enemyIndexY == pIndexY:
-                            enemyIndexX = random.randint(1, 9)
-                            enemyIndexY = random.randint(1, 9)
-                    score += 1
-                if score > 55:
-                    places[10 * enemyIndexY2 + enemyIndexX2] = 2
-                    if 0 == math.floor(cycle / 45) or 4 == math.floor(cycle / 45):
-                        for y in range(1, 10):
-                            places[(enemyIndexY2) * 10 + y] = 2
-                            places[enemyIndexX2 + y * 10] = 2
-                    if cycle == 46 or cycle == 181:
+                score += 1
+            
+            if score > 55:
+                places[10 * enemyIndexY2 + enemyIndexX2] = 2
+                if cycle >= 90 and cycle < 135:
+                    for y in range(1, 10):
+                        places[(enemyIndexY2) * 10 + y] = 2
+                        places[enemyIndexX2 + y * 10] = 2
+                elif cycle == 136:  # Second enemy moves
+                    enemyIndexX2 = random.randint(1, 9)
+                    enemyIndexY2 = random.randint(1, 9)
+                    if enemyIndexX2 == pIndexX and enemyIndexY2 == pIndexY:
                         enemyIndexX2 = random.randint(1, 9)
                         enemyIndexY2 = random.randint(1, 9)
                         if enemyIndexX2 == pIndexX and enemyIndexY2 == pIndexY:
                             enemyIndexX2 = random.randint(1, 9)
                             enemyIndexY2 = random.randint(1, 9)
-                            if enemyIndexX2 == pIndexX and enemyIndexY2 == pIndexY:
-                                enemyIndexX2 = random.randint(1, 9)
-                                enemyIndexY2 = random.randint(1, 9)
-                if score > 79:
-                    start_time = time.time()
-                    gameRound = 3
+            
+            if score > 79:
+                start_time = time.time()
+                gameRound = 3
         elif gameRound == 3:
             cycle = cycle % (900 - 3 * (int(score) - 90))
             if time.time() - start_time < 4:
@@ -284,6 +313,70 @@ while running:
                     while health < recordHealth:
                         health += 0.04
 
+        # Round 4
+        elif gameRound == 4:
+            cycle = cycle % (900 - 3 * (int(score) - 130))
+            
+            if time.time() - start_time < 4:
+                if (time.time() - start_time) % 0.75 > 0.375:
+                    cycle = 51
+                    screen.blit(font.render("Round 4", True, (255, 255, 255)), 
+                               (500 - (font.render("Round 4", True, (255, 255, 255))).get_width() / 2, 50))
+            else:
+                screen.blit(font.render("Round 4", True, (255, 255, 255)), 
+                           (500 - (font.render("Round 4", True, (255, 255, 255))).get_width() / 2, 50))
+            
+            if cycle < 45:
+                for i in range(1, 9):
+                    if 1 <= enemyIndexY + i <= 9 and 1 <= enemyIndexX + i <= 9:
+                        places[(enemyIndexY + i) * 10 + (enemyIndexX + i)] = 2
+                    if 1 <= enemyIndexY + i <= 9 and 1 <= enemyIndexX - i <= 9:
+                        places[(enemyIndexY + i) * 10 + (enemyIndexX - i)] = 2
+                    if 1 <= enemyIndexY - i <= 9 and 1 <= enemyIndexX + i <= 9:
+                        places[(enemyIndexY - i) * 10 + (enemyIndexX + i)] = 2
+                    if 1 <= enemyIndexY - i <= 9 and 1 <= enemyIndexX - i <= 9:
+                        places[(enemyIndexY - i) * 10 + (enemyIndexX - i)] = 2
+            elif cycle == 46:
+                enemyIndexX = random.randint(1, 9)
+                enemyIndexY = random.randint(1, 9)
+                if enemyIndexX == pIndexX and enemyIndexY == pIndexY:
+                    enemyIndexX = random.randint(1, 9)
+                    enemyIndexY = random.randint(1, 9)
+                    if enemyIndexX == pIndexX and enemyIndexY == pIndexY:
+                        enemyIndexX = random.randint(1, 9)
+                        enemyIndexY = random.randint(1, 9)
+                score += 1
+            
+            if score > 140:
+                places[10 * enemyIndexY2 + enemyIndexX2] = 2
+                if cycle < 45:
+                    for i in range(1, 9):
+                        if 1 <= enemyIndexY2 + i <= 9 and 1 <= enemyIndexX2 + i <= 9:
+                            places[(enemyIndexY2 + i) * 10 + (enemyIndexX2 + i)] = 2
+                        if 1 <= enemyIndexY2 + i <= 9 and 1 <= enemyIndexX2 - i <= 9:
+                            places[(enemyIndexY2 + i) * 10 + (enemyIndexX2 - i)] = 2
+                        if 1 <= enemyIndexY2 - i <= 9 and 1 <= enemyIndexX2 + i <= 9:
+                            places[(enemyIndexY2 - i) * 10 + (enemyIndexX2 + i)] = 2
+                        if 1 <= enemyIndexY2 - i <= 9 and 1 <= enemyIndexX2 - i <= 9:
+                            places[(enemyIndexY2 - i) * 10 + (enemyIndexX2 - i)] = 2
+                elif cycle == 136:
+                    enemyIndexX2 = random.randint(1, 9)
+                    enemyIndexY2 = random.randint(1, 9)
+                    if enemyIndexX2 == pIndexX and enemyIndexY2 == pIndexY:
+                        enemyIndexX2 = random.randint(1, 9)
+                        enemyIndexY2 = random.randint(1, 9)
+                        if enemyIndexX2 == pIndexX and enemyIndexY2 == pIndexY:
+                            enemyIndexX2 = random.randint(1, 9)
+                            enemyIndexY2 = random.randint(1, 9)
+            
+            # Progress to Round 5
+            if score > 160:
+                start_time = time.time()
+                gameRound = 5
+                recordHealth = (100 + health) / 2
+                while health < recordHealth:
+                    health += 0.04
+
         if score < 21:
             screen.blit(
                 font.render("21", True, (255, 255, 255)),
@@ -324,6 +417,16 @@ while running:
                 font.render("130", True, (255, 255, 255)),
                 (500 - (font.render("130", True, (255, 255, 255))).get_width() / 2, 250),
             )
+        elif score > 129 and score < 141:
+            screen.blit(
+                font.render("141", True, (255, 255, 255)),
+                (500 - (font.render("141", True, (255, 255, 255))).get_width() / 2, 250),
+            )
+        elif score > 140 and score < 161:
+            screen.blit(
+                font.render("161", True, (255, 255, 255)),
+                (500 - (font.render("161", True, (255, 255, 255))).get_width() / 2, 250),
+            )
         for k in range(0, 100):
             if places[k] == 1:
                 screen.blit(
@@ -336,8 +439,9 @@ while running:
                     (335 + 30 * ((k % 10)), 335 + 30 * ((k - (k % 10)) / 10)),
                 )
                 if 10 * pIndexY + pIndexX == k:
-                    health -= 0.04
+                    health -= 0.15
 
+        # Draw health bar
         pygame.draw.rect(
             screen, (151, 240, 178), pygame.Rect(300, 800, 400, 20), border_radius=10
         )
@@ -351,7 +455,6 @@ while running:
                 border_top_right_radius=0,
                 border_bottom_right_radius=0,
             )
-            
         else:
             pygame.draw.rect(
                 screen,
@@ -360,13 +463,16 @@ while running:
                 border_radius=10,
             )
         
+        # Draw score
         screen.blit(
             font.render(str(score), True, (255, 255, 255)),
             (500 - (font.render(str(score), True, (255, 255, 255))).get_width() / 2, 100),
         )
         
+        # Draw next milestone
         screen.blit(font.render("Next Milestone:", True, (255, 255, 255)), (320, 200))
         
+        # Check game over
         if health <= 0:
             endGame = 1
             health = 0
@@ -387,4 +493,10 @@ while running:
         if counter > 400:
             running = False
             
+        # Draw fade overlay if still fading
+        if fade_state == "fade_in":
+            fade_surface.set_alpha(fade_alpha)
+            screen.blit(fade_surface, (0, 0))
+            
+        # Update display
         pygame.display.update()
